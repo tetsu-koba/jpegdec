@@ -1,0 +1,13 @@
+*~
+*.old*
+zig-cache
+zig-out
+*.yuyv
+*.yuv
+*.jpg
+*.jpeg
+*.mjpg
+*.mjpeg
+*.a
+*.o
+a.out
