@@ -14,12 +14,12 @@ test "decodeJpegToI422" {
 
     var file1 = try std.fs.cwd().openFile(input_jpeg_path, .{});
     defer file1.close();
-    const jpeg_data = try file1.readToEndAlloc(allocator, 4*1024*1024);
+    const jpeg_data = try file1.readToEndAlloc(allocator, 4 * 1024 * 1024);
     defer allocator.free(jpeg_data);
 
     var file2 = try std.fs.cwd().openFile(expected_output_path, .{});
     defer file2.close();
-    const expected_i422_data = try file2.readToEndAlloc(allocator, 4*1024*1024);
+    const expected_i422_data = try file2.readToEndAlloc(allocator, 4 * 1024 * 1024);
     defer allocator.free(expected_i422_data);
 
     // Test decoding
