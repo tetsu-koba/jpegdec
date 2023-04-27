@@ -1,6 +1,4 @@
 const std = @import("std");
-const os = std.os;
-const assert = std.debug.assert;
 
 // Import the TurboJPEG library.
 const tj = @cImport({
@@ -8,6 +6,7 @@ const tj = @cImport({
 });
 
 pub fn decodeJpegToI422(jpeg_data: []const u8, i422_data: []u8, width: u32, height: u32) !void {
+    std.debug.assert(i422_data.len >= width * height * 2);
     // Create a TurboJPEG decompressor instance.
     const tj_instance = tj.tjInitDecompress();
     if (tj_instance == null) {
