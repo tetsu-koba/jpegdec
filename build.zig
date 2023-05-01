@@ -25,6 +25,8 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibC();
     exe.linkSystemLibrary("turbojpeg");
+    exe.addIncludePath("/opt/libjpeg-turbo/include/");
+    exe.addLibraryPath("/opt/libjpeg-turbo/lib64/");
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
