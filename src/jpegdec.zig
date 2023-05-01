@@ -36,7 +36,8 @@ pub fn decodeJpegToI422(jpeg_data: []const u8, i422_data: []u8, width: u32, heig
 
     // Decompress the JPEG image data to the I422 format.
     if (tj.tjDecompressToYUV2(tj_instance, &jpeg_data[0], jpeg_data.len, &i422_data[0], jpeg_width, 1, jpeg_height, 0) != 0) {
-        std.log.err("tjDecompressToYUV2: {s}", .{std.mem.sliceTo(tj.tjGetErrorStr2(tj_instance), 0)});
+        // JPEG data is frequently corrupted in MJPEG
+        std.log.info("tjDecompressToYUV2: {s}", .{std.mem.sliceTo(tj.tjGetErrorStr2(tj_instance), 0)});
         return error.TurboJpegDecompressToYUV2Failed;
     }
 }
