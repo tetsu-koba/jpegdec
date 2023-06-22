@@ -22,10 +22,68 @@ pub fn main() !void {
     const width = try std.fmt.parseInt(u32, args[3], 10);
     const height = try std.fmt.parseInt(u32, args[4], 10);
 
-    const jpeg_data = try infile.readToEndAlloc(alc, 4 * 1024 * 1024);
-    defer alc.free(jpeg_data);
+    try decodeMjpeg(alc, infile, outfile, width, height);
+}
+
+pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, width: u32, height: u32) !void {
+    var buffer: [64 * 1024]u8 = undefined;
+    var write_buffer = std.ArrayList(u8).init(alc);
+    defer write_buffer.deinit();
     var i422_data = try alc.alloc(u8, width * height * 2);
     defer alc.free(i422_data);
-    try jpegdec.decodeJpegToI422(jpeg_data, i422_data, width, height);
-    try outfile.writeAll(i422_data);
+    var jp = try jpegdec.JpegDec.init();
+    defer jp.deinit();
+
+    const JPEG_START0 = 0xff;
+    const JPEG_START1 = 0xd8;
+    const JPEG_END0 = 0xff;
+    const JPEG_END1 = 0xd9;
+    const State = enum {
+        st0, // waiting for JPEG_START0
+        st1, // waiting for JPEG_START1
+        st2, // waiting for JPEG_END0
+        st3, // waiting for JPEG_END1
+    };
+    var state: State = State.st0;
+
+    while (true) {
+        const n = try infile.read(&buffer);
+        if (n == 0) break;
+
+        for (buffer[0..n]) |v| {
+            switch (state) {
+                State.st0 => {
+                    if (v == JPEG_START0) {
+                        state = State.st1;
+                    }
+                },
+                State.st1 => {
+                    if (v == JPEG_START1) {
+                        try write_buffer.append(JPEG_START0);
+                        try write_buffer.append(JPEG_START1);
+                        state = State.st2;
+                    } else if (v != JPEG_START0) {
+                        state = State.st0;
+                    }
+                },
+                State.st2 => {
+                    try write_buffer.append(v);
+                    if (v == JPEG_END0) {
+                        state = State.st3;
+                    }
+                },
+                State.st3 => {
+                    try write_buffer.append(v);
+                    if (v == JPEG_END1) {
+                        try jp.decodeToI422(write_buffer.items, i422_data, width, height);
+                        try outfile.writeAll(i422_data);
+                        write_buffer.clearRetainingCapacity();
+                        state = State.st0;
+                    } else if (v != JPEG_END0) {
+                        state = State.st2;
+                    }
+                },
+            }
+        }
+    }
 }
