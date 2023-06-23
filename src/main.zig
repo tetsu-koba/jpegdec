@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const fs = std.fs;
 const mem = std.mem;
 const testing = std.testing;
@@ -33,6 +34,14 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
     defer alc.free(i422_data);
     var jp = try jpegdec.JpegDec.init();
     defer jp.deinit();
+    var isPipe = false;
+    if (builtin.os.tag == .linux) {
+        const pip = @import("set_pipe_size.zig");
+        if (try pip.isPipe(outfile.handle)) {
+            isPipe = true;
+            try pip.setPipeMaxSize(outfile.handle);
+        }
+    }
 
     const JPEG_START0 = 0xff;
     const JPEG_START1 = 0xd8;
@@ -81,11 +90,25 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
                         jp.decodeToI422(write_buffer.items, i422_data, width, height) catch {
                             continue;
                         };
-                        outfile.writeAll(i422_data) catch |err| {
-                            std.log.err("jpegdec: {s}", .{@errorName(err)});
-                            running = false;
-                            break;
-                        };
+                        if (builtin.os.tag == .linux and isPipe) {
+                            @import("vmsplice.zig").vmspliceSingleBuffer(i422_data, outfile.handle) catch |err| {
+                                if (err == error.BrokenPipe) {
+                                    running = false;
+                                    break;
+                                } else {
+                                    return err;
+                                }
+                            };
+                        } else {
+                            outfile.writeAll(i422_data) catch |err| {
+                                if (err == error.BrokenPipe) {
+                                    running = false;
+                                    break;
+                                } else {
+                                    return err;
+                                }
+                            };
+                        }
                     } else if (v != JPEG_END0) {
                         state = State.st2;
                     }
