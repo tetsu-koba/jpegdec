@@ -46,7 +46,8 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
     };
     var state: State = State.st0;
 
-    while (true) {
+    var running = true;
+    while (running) {
         const n = try infile.read(&buffer);
         if (n == 0) break;
 
@@ -75,10 +76,16 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
                 State.st3 => {
                     try write_buffer.append(v);
                     if (v == JPEG_END1) {
-                        try jp.decodeToI422(write_buffer.items, i422_data, width, height);
-                        try outfile.writeAll(i422_data);
-                        write_buffer.clearRetainingCapacity();
                         state = State.st0;
+                        defer write_buffer.clearRetainingCapacity();
+                        jp.decodeToI422(write_buffer.items, i422_data, width, height) catch {
+                            continue;
+                        };
+                        outfile.writeAll(i422_data) catch |err| {
+                            std.log.err("jpegdec: {s}", .{@errorName(err)});
+                            running = false;
+                            break;
+                        };
                     } else if (v != JPEG_END0) {
                         state = State.st2;
                     }
