@@ -16,8 +16,8 @@ pub fn isPipe(fd: os.fd_t) !bool {
     return (stat.mode & os.linux.S.IFMT) == os.linux.S.IFIFO;
 }
 
-// Set the size of the given pipe file descriptor to the maximum size
-pub fn setPipeMaxSize(fd: os.fd_t) !void {
+// Get the maximum size for pipe buffer
+pub fn getPipeMaxSize() !usize {
     // Read the maximum pipe size
     var pipe_max_size_file = try fs.cwd().openFile("/proc/sys/fs/pipe-max-size", .{});
     defer pipe_max_size_file.close();
@@ -25,11 +25,16 @@ pub fn setPipeMaxSize(fd: os.fd_t) !void {
     var reader = pipe_max_size_file.reader();
     var buffer: [128]u8 = undefined;
     const max_size_str = std.mem.trimRight(u8, buffer[0..(try reader.readAll(&buffer))], &std.ascii.whitespace);
-    const max_size = std.fmt.parseInt(c_int, max_size_str, 10) catch |err| {
+    const max_size = std.fmt.parseInt(usize, max_size_str, 10) catch |err| {
         std.debug.print("Failed to parse /proc/sys/fs/pipe-max-size: {}\n", .{err});
         return err;
     };
+    return max_size;
+}
 
+// Set the size of the given pipe file descriptor to the maximum size
+pub fn setPipeMaxSize(fd: os.fd_t) !void {
+    const max_size = @intCast(c_int, try getPipeMaxSize());
     // If the current size is less than the maximum size, set the pipe size to the maximum size
     var current_size = c.fcntl(fd, c.F_GETPIPE_SZ);
     if (current_size < max_size) {

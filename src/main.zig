@@ -27,7 +27,19 @@ pub fn main() !void {
 }
 
 pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, width: u32, height: u32) !void {
-    const bufsize = 64 * 1024;
+    var bufsize: usize = 64 * 1024;
+    blk: {
+        if (builtin.os.tag == .linux) {
+            const pip = @import("set_pipe_size.zig");
+            if (try pip.isPipe(infile.handle)) {
+                const max_size = pip.getPipeMaxSize() catch {
+                    break :blk;
+                };
+                bufsize = max_size;
+            }
+        }
+    }
+
     var buffer = try alc.alloc(u8, bufsize);
     defer alc.free(buffer);
     var write_buffer = std.ArrayList(u8).init(alc);
