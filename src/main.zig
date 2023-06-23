@@ -27,7 +27,9 @@ pub fn main() !void {
 }
 
 pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, width: u32, height: u32) !void {
-    var buffer: [64 * 1024]u8 = undefined;
+    const bufsize = 64 * 1024;
+    var buffer = try alc.alloc(u8, bufsize);
+    defer alc.free(buffer);
     var write_buffer = std.ArrayList(u8).init(alc);
     defer write_buffer.deinit();
     var i422_data = try alc.alloc(u8, width * height * 2);
@@ -57,7 +59,7 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
 
     var running = true;
     while (running) {
-        const n = try infile.read(&buffer);
+        const n = try infile.read(buffer);
         if (n == 0) break;
 
         for (buffer[0..n]) |v| {
