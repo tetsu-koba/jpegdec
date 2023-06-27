@@ -34,7 +34,7 @@ pub fn getPipeMaxSize() !usize {
 
 // Set the size of the given pipe file descriptor to the maximum size
 pub fn setPipeMaxSize(fd: os.fd_t) !void {
-    const max_size = @intCast(c_int, try getPipeMaxSize());
+    const max_size = @as(c_int, @intCast(try getPipeMaxSize()));
     // If the current size is less than the maximum size, set the pipe size to the maximum size
     var current_size = c.fcntl(fd, c.F_GETPIPE_SZ);
     if (current_size < max_size) {
