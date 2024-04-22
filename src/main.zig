@@ -14,7 +14,7 @@ pub fn main() !void {
 
     if (args.len < 5) {
         std.debug.print("Usage: {s} input_jpeg_file output_i422_file width height\n", .{args[0]});
-        std.os.exit(1);
+        std.posix.exit(1);
     }
     var infile = try std.fs.cwd().openFile(std.mem.sliceTo(args[1], 0), .{});
     defer infile.close();
@@ -44,7 +44,7 @@ pub fn decodeMjpeg(alc: std.mem.Allocator, infile: fs.File, outfile: fs.File, wi
     defer alc.free(buffer);
     var write_buffer = std.ArrayList(u8).init(alc);
     defer write_buffer.deinit();
-    var i422_data = try alc.alloc(u8, width * height * 2);
+    const i422_data = try alc.alloc(u8, width * height * 2);
     defer alc.free(i422_data);
     var jp = try jpegdec.JpegDec.init();
     defer jp.deinit();
